@@ -183,6 +183,8 @@ body{
 .chip.active{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:700;}
 .level-chips{display:flex;gap:6px;flex-wrap:wrap;}
 .filter-actions{display:flex;gap:8px;margin-left:auto;}
+.progress-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.progress-chips .chip.active{background:var(--success);border-color:var(--success);color:#fff;}
 
 /* ─── MAIN LAYOUT ───────────────────────────────────────── */
 .page-wrap{max-width:1200px;margin:0 auto;padding:24px 48px 80px;}
@@ -253,6 +255,24 @@ body{
   transition:all .2s;
 }
 .course-card:hover{box-shadow:var(--shadow-md);border-color:var(--navy);transform:translateY(-2px);}
+.course-card.is-done{background:var(--success-bg);border-color:var(--success);}
+.course-card.is-done .course-desc{opacity:.6;}
+.course-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.done-toggle{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  flex-shrink:0;
+  cursor:pointer;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.6rem;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--grey-400);
+  user-select:none;
+}
+.done-toggle input{width:14px;height:14px;accent-color:var(--success);cursor:pointer;flex-shrink:0;}
+.course-card.is-done .done-toggle{color:var(--success);font-weight:700;}
 .course-title{font-size:.86rem;font-weight:700;color:var(--navy);line-height:1.35;}
 .course-desc{
   font-size:.78rem;
@@ -336,6 +356,7 @@ body{
     </p>
     <div class="hero-stats">
       <span class="stat-pill"><strong id="stat-total-courses">0</strong> Courses</span>
+      <span class="stat-pill"><strong id="stat-done-courses">0</strong> Completed &middot; saved in this browser</span>
       <span class="stat-pill"><strong id="stat-total-categories">0</strong> Categories</span>
       <span class="stat-pill">Updated <strong id="stat-updated">-</strong></span>
     </div>
@@ -362,6 +383,14 @@ body{
       <div class="filter-actions">
         <button id="expand-all" class="filter-btn">Expand all</button>
         <button id="collapse-all" class="filter-btn">Collapse all</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <span class="filter-row-label">Progress:</span>
+      <div class="progress-chips" role="group" aria-label="Filter by your progress">
+        <button class="chip active" data-progress="all">All</button>
+        <button class="chip" data-progress="todo">Not Done</button>
+        <button class="chip" data-progress="done">Completed</button>
       </div>
     </div>
   </div>
@@ -3506,6 +3535,28 @@ body{
 (function(){
   var DATA = JSON.parse(document.getElementById('course-data').textContent);
 
+  // ── Progress tracking (saved to this browser only — no login system on
+  // this static page, so there's nowhere else to store it) ───────────────
+  var PROGRESS_KEY = 'praesignis_course_progress_v1';
+  var progress = {};
+  try {
+    progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+  } catch (e) { progress = {}; }
+
+  function saveProgress(){
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); } catch (e) {}
+  }
+  function isDone(id){ return !!progress[id]; }
+  function setDone(id, done){
+    if (done) progress[id] = true; else delete progress[id];
+    saveProgress();
+  }
+
+  DATA.forEach(function(c){
+    var m = c.url.match(/[?&]cid=([^&]+)/);
+    c.id = m ? m[1] : c.url;
+  });
+
   var CATEGORY_ICONS = {
     "Amazon Ads": "📣",
     "Application Integration": "🔗",
@@ -3549,8 +3600,9 @@ body{
   var searchEl    = document.getElementById('search-input');
   var categorySel = document.getElementById('category-select');
   var levelChips  = document.querySelectorAll('.level-chips .chip');
+  var progressChips = document.querySelectorAll('.progress-chips .chip');
 
-  var state = { search: '', category: 'all', level: 'all' };
+  var state = { search: '', category: 'all', level: 'all', progress: 'all' };
 
   // ── Build category list + counts ───────────────────────
   var categoryCounts = {};
@@ -3572,6 +3624,12 @@ body{
   document.getElementById('stat-total-categories').textContent = categories.length;
   document.getElementById('stat-updated').textContent = new Date().toLocaleDateString('en-GB', { year:'numeric', month:'short', day:'numeric' });
 
+  function updateProgressStat(){
+    var done = DATA.filter(function(c){ return isDone(c.id); }).length;
+    document.getElementById('stat-done-courses').textContent = done;
+  }
+  updateProgressStat();
+
   // ── Helpers ─────────────────────────────────────────────
   function escapeHtml(str){
     return String(str).replace(/[&<>"']/g, function(c){
@@ -3585,7 +3643,7 @@ body{
   // ── Render ──────────────────────────────────────────────
   function render(){
     var q = state.search.trim().toLowerCase();
-    var filtersActive = !!q || state.category !== 'all' || state.level !== 'all';
+    var filtersActive = !!q || state.category !== 'all' || state.level !== 'all' || state.progress !== 'all';
     var totalMatches = 0;
     var matchedCategories = 0;
 
@@ -3597,6 +3655,8 @@ body{
       var items = DATA.filter(function(c){
         if (c.category !== cat) return false;
         if (state.level !== 'all' && c.level !== state.level) return false;
+        if (state.progress === 'done' && !isDone(c.id)) return false;
+        if (state.progress === 'todo' && isDone(c.id)) return false;
         if (q && c.name.toLowerCase().indexOf(q) === -1 && c.description.toLowerCase().indexOf(q) === -1) return false;
         return true;
       });
@@ -3628,9 +3688,16 @@ body{
       var grid = document.createElement('div');
       grid.className = 'card-grid';
       grid.innerHTML = items.map(function(c){
+        var done = isDone(c.id);
         return (
-          '<div class="course-card">' +
-            '<div class="course-title">' + escapeHtml(c.name) + '</div>' +
+          '<div class="course-card' + (done ? ' is-done' : '') + '">' +
+            '<div class="course-card-top">' +
+              '<div class="course-title">' + escapeHtml(c.name) + '</div>' +
+              '<label class="done-toggle" title="Saved in this browser only">' +
+                '<input type="checkbox" class="done-checkbox" data-id="' + escapeHtml(c.id) + '"' + (done ? ' checked' : '') + '>' +
+                '<span>' + (done ? 'Done' : 'Mark done') + '</span>' +
+              '</label>' +
+            '</div>' +
             '<div class="course-desc">' + escapeHtml(c.description) + '</div>' +
             '<div class="course-meta">' +
               '<span class="level-badge ' + levelClass(c.level) + '">' + escapeHtml(c.level) + '</span>' +
@@ -3668,12 +3735,33 @@ body{
       render();
     });
   });
+  progressChips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      progressChips.forEach(function(c){ c.classList.remove('active'); });
+      chip.classList.add('active');
+      state.progress = chip.dataset.progress;
+      render();
+    });
+  });
+  catalogEl.addEventListener('change', function(e){
+    if (!e.target.matches('.done-checkbox')) return;
+    var id = e.target.dataset.id;
+    var done = e.target.checked;
+    setDone(id, done);
+    updateProgressStat();
+    var card = e.target.closest('.course-card');
+    card.classList.toggle('is-done', done);
+    e.target.nextElementSibling.textContent = done ? 'Done' : 'Mark done';
+    if (state.progress !== 'all') render();
+  });
   document.getElementById('reset-filters').addEventListener('click', function(){
-    state = { search: '', category: 'all', level: 'all' };
+    state = { search: '', category: 'all', level: 'all', progress: 'all' };
     searchEl.value = '';
     categorySel.value = 'all';
     levelChips.forEach(function(c){ c.classList.remove('active'); });
     levelChips[0].classList.add('active');
+    progressChips.forEach(function(c){ c.classList.remove('active'); });
+    progressChips[0].classList.add('active');
     render();
   });
   document.getElementById('expand-all').addEventListener('click', function(){
