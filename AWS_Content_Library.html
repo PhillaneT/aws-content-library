@@ -242,6 +242,37 @@ body{
 .category-body{display:none;padding:0 20px 20px;border-top:1px solid var(--grey-100);}
 .category-section.open .category-body{display:block;padding-top:18px;}
 
+/* ─── FEATURED SECTION ──────────────────────────────────── */
+.featured-section{
+  background:#fff;
+  border:1px solid var(--gold);
+  border-radius:var(--radius-md);
+  margin-bottom:20px;
+  overflow:hidden;
+  box-shadow:var(--shadow-sm);
+}
+.featured-header{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  width:100%;
+  padding:16px 20px;
+  background:var(--gold-pale);
+  border-bottom:1px solid var(--gold-light);
+}
+.featured-icon{font-size:1.4rem;flex-shrink:0;}
+.featured-name{font-size:.95rem;font-weight:700;color:var(--navy);flex:1;letter-spacing:-.01em;}
+.featured-count{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem;
+  color:var(--grey-400);
+  background:var(--grey-100);
+  padding:3px 10px;
+  border-radius:999px;
+  flex-shrink:0;
+}
+.featured-body{padding:18px 20px 20px;}
+
 /* ─── COURSE CARDS ───────────────────────────────────────── */
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
 .course-card{
@@ -397,6 +428,7 @@ body{
 </div>
 
 <main class="page-wrap">
+  <div id="featured-courses"></div>
   <div class="results-summary" id="results-summary"></div>
   <div id="catalog"></div>
   <div class="empty-state" id="empty-state" hidden>
@@ -3639,6 +3671,65 @@ body{
   function levelClass(level){
     return 'level-' + String(level).toLowerCase();
   }
+  function courseCardHtml(c){
+    var done = isDone(c.id);
+    return (
+      '<div class="course-card' + (done ? ' is-done' : '') + '">' +
+        '<div class="course-card-top">' +
+          '<div class="course-title">' + escapeHtml(c.name) + '</div>' +
+          '<label class="done-toggle" title="Saved in this browser only">' +
+            '<input type="checkbox" class="done-checkbox" data-id="' + escapeHtml(c.id) + '"' + (done ? ' checked' : '') + '>' +
+            '<span>' + (done ? 'Done' : 'Mark done') + '</span>' +
+          '</label>' +
+        '</div>' +
+        '<div class="course-desc">' + escapeHtml(c.description) + '</div>' +
+        '<div class="course-meta">' +
+          '<span class="level-badge ' + levelClass(c.level) + '">' + escapeHtml(c.level) + '</span>' +
+          '<a class="start-btn" href="' + escapeHtml(c.url) + '" target="_blank" rel="noopener">Start Course →</a>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // ── Featured courses (pinned, CEO priority list) ─────────
+  var FEATURED_COURSES = [
+    "AWS Glue Getting Started",
+    "Introduction to Machine Learning: Art of the Possible",
+    "Essentials of Prompt Engineering",
+    "Fundamentals of Machine Learning and Artificial Intelligence",
+    "AWS Foundations: Machine Learning Basics",
+    "Fundamentals of Analytics on AWS – Part 1",
+    "Job Roles in the Cloud",
+    "Planning a Generative AI Project",
+    "Getting Started with DevOps on AWS",
+    "Foundations of Prompt Engineering",
+    "AWS Lambda Foundations",
+    "Developing Generative Artificial Intelligence Solutions",
+    "Fundamentals of Analytics on AWS – Part 2",
+    "Amazon SageMaker AI Getting Started",
+    "Responsible Artificial Intelligence Practices",
+    "AWS Compute Services Overview",
+    "Exploring Artificial Intelligence Use Cases and Applications",
+    "Introduction to Amazon API Gateway"
+  ];
+  var featuredEl = document.getElementById('featured-courses');
+  var featuredItems = FEATURED_COURSES
+    .map(function(name){ return DATA.filter(function(c){ return c.name === name; })[0]; })
+    .filter(Boolean);
+  if (featuredItems.length) {
+    var fSection = document.createElement('div');
+    fSection.className = 'featured-section';
+    fSection.innerHTML =
+      '<div class="featured-header">' +
+        '<span class="featured-icon">⭐</span>' +
+        '<span class="featured-name">Featured Courses</span>' +
+        '<span class="featured-count">' + featuredItems.length + '</span>' +
+      '</div>' +
+      '<div class="featured-body"><div class="card-grid">' +
+        featuredItems.map(courseCardHtml).join('') +
+      '</div></div>';
+    featuredEl.appendChild(fSection);
+  }
 
   // ── Render ──────────────────────────────────────────────
   function render(){
@@ -3687,25 +3778,7 @@ body{
 
       var grid = document.createElement('div');
       grid.className = 'card-grid';
-      grid.innerHTML = items.map(function(c){
-        var done = isDone(c.id);
-        return (
-          '<div class="course-card' + (done ? ' is-done' : '') + '">' +
-            '<div class="course-card-top">' +
-              '<div class="course-title">' + escapeHtml(c.name) + '</div>' +
-              '<label class="done-toggle" title="Saved in this browser only">' +
-                '<input type="checkbox" class="done-checkbox" data-id="' + escapeHtml(c.id) + '"' + (done ? ' checked' : '') + '>' +
-                '<span>' + (done ? 'Done' : 'Mark done') + '</span>' +
-              '</label>' +
-            '</div>' +
-            '<div class="course-desc">' + escapeHtml(c.description) + '</div>' +
-            '<div class="course-meta">' +
-              '<span class="level-badge ' + levelClass(c.level) + '">' + escapeHtml(c.level) + '</span>' +
-              '<a class="start-btn" href="' + escapeHtml(c.url) + '" target="_blank" rel="noopener">Start Course →</a>' +
-            '</div>' +
-          '</div>'
-        );
-      }).join('');
+      grid.innerHTML = items.map(courseCardHtml).join('');
 
       body.appendChild(grid);
       section.appendChild(header);
@@ -3743,15 +3816,17 @@ body{
       render();
     });
   });
-  catalogEl.addEventListener('change', function(e){
+  document.addEventListener('change', function(e){
     if (!e.target.matches('.done-checkbox')) return;
     var id = e.target.dataset.id;
     var done = e.target.checked;
     setDone(id, done);
     updateProgressStat();
-    var card = e.target.closest('.course-card');
-    card.classList.toggle('is-done', done);
-    e.target.nextElementSibling.textContent = done ? 'Done' : 'Mark done';
+    document.querySelectorAll('.done-checkbox[data-id="' + id.replace(/"/g, '\\"') + '"]').forEach(function(cb){
+      cb.checked = done;
+      cb.closest('.course-card').classList.toggle('is-done', done);
+      cb.nextElementSibling.textContent = done ? 'Done' : 'Mark done';
+    });
     if (state.progress !== 'all') render();
   });
   document.getElementById('reset-filters').addEventListener('click', function(){
