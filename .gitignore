@@ -1,0 +1,4 @@
+config.json
+manual_data/
+*.zip
+.env

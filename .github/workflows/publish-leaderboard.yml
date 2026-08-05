@@ -1,0 +1,69 @@
+name: Publish leaderboard snapshot
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "leaderboard-publish"
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Write config.json from secret
+        env:
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+        run: python -c "import os; open('config.json','w',encoding='utf-8').write(os.environ['CONFIG_JSON'])"
+
+      - name: Restore manual_data/ from secret
+        env:
+          MANUAL_DATA_B64: ${{ secrets.MANUAL_DATA_B64 }}
+        run: |
+          python -c "
+          import base64, os
+          data = base64.b64decode(os.environ['MANUAL_DATA_B64'])
+          open('manual_data.zip', 'wb').write(data)
+          "
+          mkdir -p manual_data
+          python -c "import zipfile; zipfile.ZipFile('manual_data.zip').extractall('manual_data')"
+          rm -f manual_data.zip
+
+      - name: Generate snapshot
+        env:
+          RAVEN360_CLIENT_ID: ${{ secrets.RAVEN360_CLIENT_ID }}
+          RAVEN360_CLIENT_SECRET: ${{ secrets.RAVEN360_CLIENT_SECRET }}
+          RAVEN360_XAPI_KEY: ${{ secrets.RAVEN360_XAPI_KEY }}
+          MOODLE_TOKEN: ${{ secrets.MOODLE_TOKEN }}
+        run: python generate_snapshot.py
+
+      - name: Clean up local-only files (never committed)
+        run: rm -rf config.json manual_data
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cloud_Skills_Leaderboard.html
+          if git diff --cached --quiet; then
+            echo "No change in leaderboard content — skipping commit."
+          else
+            git commit -m "Auto-update leaderboard snapshot"
+            git push
+          fi
