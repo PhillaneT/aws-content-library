@@ -791,7 +791,11 @@ def build_leaderboard(month_index=None):
     )
 
     return {
-        "generatedAt": datetime.now().isoformat(),
+        # naive local time on someone's machine (server.py) is already SAST, but the
+        # GitHub Actions runner this script also runs on is UTC — without this, every
+        # public snapshot would silently claim to be ~2 hours older than it really is
+        # to a South African viewer.
+        "generatedAt": datetime.now(DISPLAY_TZ).replace(tzinfo=None).isoformat(),
         "source": "live",
         "config": cfg,
         "month": {
