@@ -906,7 +906,21 @@ def render_static_snapshot(payload, is_month_end=False):
         raw = (l.get("name") or "").strip()
         return not raw or "@" in raw
 
+    def _anon_mark_html(l):
+        if not _is_anon(l):
+            return ""
+        title = "We're missing your profile details — we'll be in touch to fix this shortly"
+        return f' <span class="anon-mark" title="{title}">†</span>'
+
     any_anon = any(_is_anon(l) for l in payload["leaderboard"])
+    anon_legend_html = ""
+    if any_anon:
+        anon_legend_text = (
+            "† See a name marked like this and think it might be you? "
+            "We're missing your profile details, so we couldn't show your real "
+            "name here — we'll be in contact with you shortly to sort it out."
+        )
+        anon_legend_html = f'<p class="muted anon-legend">{anon_legend_text}</p>'
     badge_legend = (
         f'{_static_badge_dot("C", True, "Completions")} Completions &middot; '
         f'{_static_badge_dot("B", True, "Breadth")} Breadth &middot; '
@@ -916,7 +930,7 @@ def render_static_snapshot(payload, is_month_end=False):
     rows = "\n".join(f"""
         <tr class="{'cutoff-row' if l['rank'] == top_n_for_gap else ''}" data-name="{esc(masked_names[l['userId']].lower())}">
           <td>#{l['rank']}</td>
-          <td>{esc(masked_names[l['userId']])}{' <span class="anon-mark" title="We\'re missing your profile details — we\'ll be in touch to fix this shortly">†</span>' if _is_anon(l) else ''}</td>
+          <td>{esc(masked_names[l['userId']])}{_anon_mark_html(l)}</td>
           <td>{render_badges_static(l['badges'])}</td>
           <td><b>{l['totalPoints']}</b></td>
         </tr>""" for l in payload["leaderboard"])
@@ -1088,7 +1102,7 @@ def render_static_snapshot(payload, is_month_end=False):
   <div class="panel">
     <h2>Full Leaderboard</h2>
     <p class="muted badge-legend">Badges: {badge_legend} — earn all four to qualify for prizes. The line below rank {top_n_for_gap} marks this month's Top {top_n_for_gap} cutoff.</p>
-    {f'<p class="muted anon-legend">† See a name marked like this and think it might be you? We\'re missing your profile details, so we couldn\'t show your real name here — we\'ll be in contact with you shortly to sort it out.</p>' if any_anon else ''}
+    {anon_legend_html}
     <input type="text" id="searchBox" class="search-box" placeholder="Find your name…" oninput="filterRows(this.value)" autocomplete="off">
     <p class="muted" id="searchCount"></p>
     <div class="table-wrap">
