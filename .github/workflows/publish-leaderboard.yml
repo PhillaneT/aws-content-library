@@ -63,7 +63,29 @@ jobs:
           git add Cloud_Skills_Leaderboard.html
           if git diff --cached --quiet; then
             echo "No change in leaderboard content — skipping commit."
-          else
-            git commit -m "Auto-update leaderboard snapshot"
-            git push
+            exit 0
           fi
+          git commit -m "Auto-update leaderboard snapshot"
+
+          # Two independent schedulers (GitHub's native cron + an external cron-job.org
+          # trigger, added because the native one had a multi-hour startup delay) can
+          # both fire within the same window. The file is fully machine-regenerated
+          # every run, so there's nothing to genuinely merge — on a rejected push,
+          # rebase this run's one commit onto whatever a sibling run just published
+          # and retry; if that itself conflicts, just concede to the sibling run's
+          # already-published (near-identical) snapshot rather than fail the job.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Pushed successfully."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) — a sibling run published first. Rebasing onto latest main..."
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort
+              echo "Rebase conflicted; conceding to the sibling run's snapshot."
+              exit 0
+            fi
+            sleep $((attempt * 3))
+          done
+          echo "Giving up after 5 attempts; leaving remote as the sibling run left it."
