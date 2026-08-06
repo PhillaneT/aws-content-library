@@ -1,10 +1,22 @@
 name: Publish leaderboard snapshot
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
 
+# GitHub's own native cron scheduler used to be a second trigger here
+# (`schedule: - cron: "*/10 * * * *"`, later loosened to */15 as a first
+# attempt at a fix), running alongside an external cron-job.org ping that
+# calls workflow_dispatch every ~15 min. Removed for good 2026-08-06: the
+# native scheduler is documented by GitHub as best-effort
+# and can silently run 30+ min late under load — confirmed live when it fired
+# at 15:41 instead of its 15:40 slot, then collided with the next
+# cron-job.org-triggered run before the first had a runner assigned. With
+# `cancel-in-progress: false`, a NEW run doesn't touch one that's already
+# RUNNING, but it does supersede one still sitting QUEUED — so back-to-back
+# triggers from two independent sources kept bumping each other out of the
+# queue before either could start, and the page went ~1h49m without a
+# successful publish. cron-job.org alone is the sole scheduler now; it was
+# the one firing on time throughout the incident.
 permissions:
   contents: write
 
@@ -15,6 +27,13 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    # A hung step (e.g. a slow/unresponsive Raven360 or Moodle call) used to
+    # sit on GitHub's default 360-minute job timeout, holding the concurrency
+    # slot and queuing out every trigger behind it. 8 minutes is generous
+    # against the ~80s worst-case Moodle full sweep (see server.py) plus
+    # checkout/setup/pip install — a run that's still going past that is
+    # stuck, not just slow, and should free the slot for the next trigger.
+    timeout-minutes: 8
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,13 +86,13 @@ jobs:
           fi
           git commit -m "Auto-update leaderboard snapshot"
 
-          # Two independent schedulers (GitHub's native cron + an external cron-job.org
-          # trigger, added because the native one had a multi-hour startup delay) can
-          # both fire within the same window. The file is fully machine-regenerated
-          # every run, so there's nothing to genuinely merge — on a rejected push,
-          # rebase this run's one commit onto whatever a sibling run just published
-          # and retry; if that itself conflicts, just concede to the sibling run's
-          # already-published (near-identical) snapshot rather than fail the job.
+          # cron-job.org fires every ~15 min, and a manual "Run workflow" click can
+          # still land in the same window as a scheduled one. The file is fully
+          # machine-regenerated every run, so there's nothing to genuinely merge —
+          # on a rejected push, rebase this run's one commit onto whatever a sibling
+          # run just published and retry; if that itself conflicts, just concede to
+          # the sibling run's already-published (near-identical) snapshot rather
+          # than fail the job.
           for attempt in 1 2 3 4 5; do
             if git push; then
               echo "Pushed successfully."
