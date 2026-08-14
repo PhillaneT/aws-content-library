@@ -115,6 +115,83 @@ body{
 }
 .stat-pill strong{color:var(--gold);font-size:.85rem;}
 
+/* ─── FRAME BANNER (shown only when embedded in an iframe) ── */
+.frame-banner{
+  background:var(--gold-pale);
+  border-bottom:1px solid var(--gold-light);
+}
+.frame-banner-inner{
+  max-width:1100px;
+  margin:0 auto;
+  padding:10px 20px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  font-size:.82rem;
+  color:var(--grey-800);
+}
+.frame-banner-inner a{color:var(--navy);font-weight:700;text-decoration:underline;}
+.frame-banner-close{
+  margin-left:auto;
+  background:none;
+  border:none;
+  font-size:1.1rem;
+  line-height:1;
+  color:var(--grey-400);
+  cursor:pointer;
+  flex-shrink:0;
+}
+
+/* ─── PROGRESS SAVE/RESTORE MODAL ───────────────────────── */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(4,30,66,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:100;
+}
+.modal-overlay[hidden]{display:none;}
+.modal-box{
+  background:#fff;
+  border-radius:var(--radius-lg);
+  padding:24px;
+  max-width:480px;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  box-shadow:var(--shadow-md);
+}
+.modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.modal-header h2{font-size:1.05rem;color:var(--navy);}
+.modal-close{background:none;border:none;font-size:1.4rem;line-height:1;color:var(--grey-400);cursor:pointer;padding:0 4px;}
+.modal-desc{font-size:.82rem;color:var(--grey-800);opacity:.85;line-height:1.55;margin-bottom:16px;}
+.modal-label{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);margin-bottom:6px;}
+.modal-textarea{
+  width:100%;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem;
+  border:1px solid var(--grey-200);
+  border-radius:var(--radius-sm);
+  padding:10px;
+  resize:vertical;
+  background:var(--grey-50);
+  color:var(--grey-800);
+  margin-bottom:10px;
+}
+.modal-divider{border-top:1px solid var(--grey-100);margin:18px 0;}
+.modal-status{
+  margin-top:12px;
+  font-size:.8rem;
+  padding:8px 12px;
+  border-radius:var(--radius-sm);
+  background:var(--success-bg);
+  color:var(--success);
+}
+.modal-status.is-error{background:var(--warn-bg);color:var(--warn);}
+
 /* ─── FILTER BAR (sticky) ───────────────────────────────── */
 .filter-bar{
   background:var(--navy);
@@ -376,6 +453,8 @@ body{
 </head>
 <body>
 
+<div id="frame-banner" class="frame-banner" hidden></div>
+
 <header class="hero">
   <div class="hero-inner">
     <div class="hero-eyebrow">Praesignis &middot; Digital Content Library</div>
@@ -423,7 +502,35 @@ body{
         <button class="chip" data-progress="todo">Not Done</button>
         <button class="chip" data-progress="done">Completed</button>
       </div>
+      <div class="filter-actions">
+        <button id="progress-code-btn" class="filter-btn">💾 Save / Restore Progress</button>
+      </div>
     </div>
+  </div>
+</div>
+
+<div id="progress-modal" class="modal-overlay" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="progress-modal-title">
+    <div class="modal-header">
+      <h2 id="progress-modal-title">Save or restore your progress</h2>
+      <button type="button" id="progress-modal-close" class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <p class="modal-desc">
+      "Mark done" is saved only in this browser &mdash; it doesn't sync to any account. If you switch
+      devices, switch browsers, or this browser clears its storage, copy the code below somewhere safe
+      (email or notes) so you can paste it back in and pick up exactly where you left off.
+    </p>
+    <label class="modal-label" for="progress-code-output">Your progress code</label>
+    <textarea id="progress-code-output" class="modal-textarea" readonly rows="3"></textarea>
+    <button type="button" id="progress-code-copy" class="filter-btn">Copy code</button>
+
+    <div class="modal-divider"></div>
+
+    <label class="modal-label" for="progress-code-input">Restore from a saved code</label>
+    <textarea id="progress-code-input" class="modal-textarea" rows="3" placeholder="Paste your saved progress code here&hellip;"></textarea>
+    <button type="button" id="progress-code-restore" class="filter-btn">Restore</button>
+
+    <p id="progress-code-status" class="modal-status" hidden></p>
   </div>
 </div>
 
@@ -3584,6 +3691,52 @@ body{
     saveProgress();
   }
 
+  // ── Frame banner — localStorage is unreliable (partitioned/blocked on
+  // Safari and increasingly other browsers) when this page is loaded inside
+  // a cross-origin <iframe>, e.g. embedded in Moodle. window.self !== top is
+  // a safe same-origin-independent check (no property access on window.top
+  // needed, so it never throws cross-origin). ──────────────────────────
+  (function(){
+    if (window.self === window.top) return;
+    var CANONICAL_URL = 'https://phillanet.github.io/aws-content-library/AWS_Content_Library.html';
+    var banner = document.getElementById('frame-banner');
+    banner.innerHTML =
+      '<div class="frame-banner-inner">' +
+        '<span>Your "Mark done" progress may not save reliably inside this embedded view. ' +
+        '<a href="' + CANONICAL_URL + '" target="_blank" rel="noopener">Open in a new tab &nearr;</a></span>' +
+        '<button type="button" class="frame-banner-close" aria-label="Dismiss">&times;</button>' +
+      '</div>';
+    banner.hidden = false;
+    banner.querySelector('.frame-banner-close').addEventListener('click', function(){
+      banner.hidden = true;
+    });
+  })();
+
+  // ── Progress save/restore code — a manual, no-backend way to carry
+  // progress across devices/browsers or recover it if local storage gets
+  // cleared. Restoring always MERGES into whatever is already saved in this
+  // browser (union of done ids) — it never removes or overwrites existing
+  // progress. ───────────────────────────────────────────────────────────
+  var PROGRESS_CODE_PREFIX = 'PCLP1:';
+  function encodeProgressCode(){
+    var ids = Object.keys(progress);
+    return PROGRESS_CODE_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(ids))));
+  }
+  function decodeProgressCode(code){
+    code = (code || '').trim();
+    if (code.indexOf(PROGRESS_CODE_PREFIX) !== 0) {
+      throw new Error('That doesn\'t look like a progress code from this page.');
+    }
+    var ids;
+    try {
+      ids = JSON.parse(decodeURIComponent(escape(atob(code.slice(PROGRESS_CODE_PREFIX.length)))));
+    } catch (e) {
+      throw new Error('Couldn\'t read that code — check it was copied in full.');
+    }
+    if (!Array.isArray(ids)) throw new Error('Couldn\'t read that code — check it was copied in full.');
+    return ids;
+  }
+
   DATA.forEach(function(c){
     var m = c.url.match(/[?&]cid=([^&]+)/);
     c.id = m ? m[1] : c.url;
@@ -3839,6 +3992,86 @@ body{
     progressChips[0].classList.add('active');
     render();
   });
+  // ── Progress save/restore modal ─────────────────────────
+  (function(){
+    var modal = document.getElementById('progress-modal');
+    var output = document.getElementById('progress-code-output');
+    var input = document.getElementById('progress-code-input');
+    var status = document.getElementById('progress-code-status');
+
+    function showStatus(msg, isError){
+      status.textContent = msg;
+      status.classList.toggle('is-error', !!isError);
+      status.hidden = false;
+    }
+
+    function openModal(){
+      output.value = encodeProgressCode();
+      input.value = '';
+      status.hidden = true;
+      modal.hidden = false;
+    }
+    function closeModal(){ modal.hidden = true; }
+
+    document.getElementById('progress-code-btn').addEventListener('click', openModal);
+    document.getElementById('progress-modal-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+
+    document.getElementById('progress-code-copy').addEventListener('click', function(){
+      output.select();
+      var copied = false;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(output.value).then(function(){
+          showStatus('Code copied — paste it somewhere safe, like an email to yourself.');
+        }).catch(function(){
+          showStatus('Couldn\'t copy automatically — the code is selected, press Ctrl+C / Cmd+C.');
+        });
+        copied = true;
+      }
+      if (!copied) {
+        try {
+          document.execCommand('copy');
+          showStatus('Code copied — paste it somewhere safe, like an email to yourself.');
+        } catch (e) {
+          showStatus('Couldn\'t copy automatically — the code is selected, press Ctrl+C / Cmd+C.');
+        }
+      }
+    });
+
+    document.getElementById('progress-code-restore').addEventListener('click', function(){
+      var ids;
+      try {
+        ids = decodeProgressCode(input.value);
+      } catch (e) {
+        showStatus(e.message, true);
+        return;
+      }
+      var added = 0;
+      ids.forEach(function(id){
+        if (!progress[id]) added++;
+        progress[id] = true; // union only — never removes/overwrites existing progress
+      });
+      saveProgress();
+      updateProgressStat();
+      render();
+      // render() only rebuilds the category accordion, not the Featured
+      // Courses section (built once at load) — sync those checkboxes directly.
+      ids.forEach(function(id){
+        document.querySelectorAll('#featured-courses .done-checkbox[data-id="' + id.replace(/"/g, '\\"') + '"]').forEach(function(cb){
+          cb.checked = true;
+          cb.closest('.course-card').classList.toggle('is-done', true);
+          cb.nextElementSibling.textContent = 'Done';
+        });
+      });
+      output.value = encodeProgressCode();
+      showStatus(
+        added > 0
+          ? 'Restored ' + added + ' course' + (added === 1 ? '' : 's') + ' (the rest were already marked done in this browser).'
+          : 'Nothing new to restore — every course in that code was already marked done here.'
+      );
+    });
+  })();
+
   document.getElementById('expand-all').addEventListener('click', function(){
     document.querySelectorAll('.category-section').forEach(function(s){
       s.classList.add('open');
