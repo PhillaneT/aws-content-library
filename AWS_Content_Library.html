@@ -393,7 +393,8 @@ body{
   flex:1;
   opacity:.85;
 }
-.course-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;}
+.course-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;flex-wrap:wrap;}
+.course-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .level-badge{
   font-family:'JetBrains Mono',monospace;
   font-size:.62rem;
@@ -406,6 +407,22 @@ body{
 .level-fundamental{background:var(--info-bg);color:var(--info);}
 .level-intermediate{background:var(--warn-bg);color:var(--warn);}
 .level-advanced{background:var(--success-bg);color:var(--success);}
+.category-badge{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.62rem;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:4px 9px;
+  border-radius:4px;
+  white-space:nowrap;
+  background:var(--grey-100);
+  color:var(--navy);
+  border:1px solid var(--grey-200);
+  cursor:pointer;
+  transition:background .15s ease, border-color .15s ease;
+  font-weight:600;
+}
+.category-badge:hover{background:var(--gold-pale);border-color:var(--gold);}
 .start-btn{
   font-family:'JetBrains Mono',monospace;
   font-size:.66rem;
@@ -3837,7 +3854,10 @@ body{
         '</div>' +
         '<div class="course-desc">' + escapeHtml(c.description) + '</div>' +
         '<div class="course-meta">' +
-          '<span class="level-badge ' + levelClass(c.level) + '">' + escapeHtml(c.level) + '</span>' +
+          '<div class="course-tags">' +
+            '<span class="level-badge ' + levelClass(c.level) + '">' + escapeHtml(c.level) + '</span>' +
+            '<button type="button" class="category-badge" data-category="' + escapeHtml(c.category) + '" title="Show all ' + escapeHtml(c.category) + ' courses">' + (CATEGORY_ICONS[c.category] || '📘') + ' ' + escapeHtml(c.category) + '</button>' +
+          '</div>' +
           '<a class="start-btn" href="' + escapeHtml(c.url) + '" target="_blank" rel="noopener">Start Course →</a>' +
         '</div>' +
       '</div>'
@@ -3890,6 +3910,10 @@ body{
     var filtersActive = !!q || state.category !== 'all' || state.level !== 'all' || state.progress !== 'all';
     var totalMatches = 0;
     var matchedCategories = 0;
+
+    // Hide the (long) featured block once any filter is active, so filtered
+    // results appear right under the filter bar instead of below ~18 cards.
+    featuredEl.hidden = filtersActive;
 
     catalogEl.innerHTML = '';
 
@@ -3968,6 +3992,16 @@ body{
       state.progress = chip.dataset.progress;
       render();
     });
+  });
+  document.addEventListener('click', function(e){
+    var badge = e.target.closest('.category-badge');
+    if (!badge) return;
+    var cat = badge.dataset.category;
+    state.category = cat;
+    categorySel.value = cat;
+    render();
+    var target = document.getElementById('results-summary');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.addEventListener('change', function(e){
     if (!e.target.matches('.done-checkbox')) return;
