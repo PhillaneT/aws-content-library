@@ -530,6 +530,14 @@ def click_points_for_duration(duration_minutes, tiers):
     return tiers[-1]["points"]
 
 
+def time_weighted_click_points(duration_minutes, capped_gap_minutes, tiers):
+    ceiling = click_points_for_duration(duration_minutes, tiers)
+    if capped_gap_minutes is None or not duration_minutes:
+        return ceiling
+    fraction = min(1.0, capped_gap_minutes / duration_minutes)
+    return round(ceiling * fraction)
+
+
 def compute_click_gaps(touched, id_field, cap_multiplier):
     items = sorted(
         (t for t in touched if t.get("firstAccess") and _parse_dt(t["firstAccess"])),
@@ -579,6 +587,11 @@ def build_leaderboard(month_index=None):
     trust_cfg = {**TR, "_assessment_pass_score": T["assessment_pass_score"]}
 
     month_start, month_end = resolve_month(month_index)
+
+    time_weighted = (
+        month_start is not None
+        and month_start >= date.fromisoformat(CS["time_weighted_from_date"])
+    )
 
     token = get_raven360_token()
     all_records = []
@@ -645,7 +658,11 @@ def build_leaderboard(month_index=None):
         timeline = []
         for t in touched:
             duration = course_duration_minutes(id_field, t["courseId"])
-            base_pts = click_points_for_duration(duration, CS["duration_tiers"])
+            base_pts = (
+                time_weighted_click_points(duration, capped_gap, CS["duration_tiers"])
+                if time_weighted
+                else click_points_for_duration(duration, CS["duration_tiers"])
+            )
             raw_gap, capped_gap = click_gaps.get(t["courseId"], (None, None))
             trust_row = next((c for c in completions_trust if c["courseId"] == t["courseId"]), None)
             auto_quality = bool(trust_row and trust_row["signals"]["quality"])
