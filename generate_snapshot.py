@@ -588,9 +588,11 @@ def build_leaderboard(month_index=None):
 
     month_start, month_end = resolve_month(month_index)
 
+    tw_from = CS.get("time_weighted_from_date")
     time_weighted = (
         month_start is not None
-        and month_start >= date.fromisoformat(CS["time_weighted_from_date"])
+        and tw_from is not None
+        and month_start >= date.fromisoformat(tw_from)
     )
 
     token = get_raven360_token()
