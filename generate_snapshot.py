@@ -660,12 +660,12 @@ def build_leaderboard(month_index=None):
         timeline = []
         for t in touched:
             duration = course_duration_minutes(id_field, t["courseId"])
+            raw_gap, capped_gap = click_gaps.get(t["courseId"], (None, None))
             base_pts = (
                 time_weighted_click_points(duration, capped_gap, CS["duration_tiers"])
                 if time_weighted
                 else click_points_for_duration(duration, CS["duration_tiers"])
             )
-            raw_gap, capped_gap = click_gaps.get(t["courseId"], (None, None))
             trust_row = next((c for c in completions_trust if c["courseId"] == t["courseId"]), None)
             auto_quality = bool(trust_row and trust_row["signals"]["quality"])
             redacted = (user_id, t["courseId"]) in quality_redactions
