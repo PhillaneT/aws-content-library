@@ -1,0 +1,71 @@
+name: Update AWS Content Library
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC (08:00 SAST). GitHub's native scheduler is
+    # best-effort and can drift ±30 min under load, which is fine for a weekly
+    # catalog refresh — unlike the leaderboard (15-min cadence), timing
+    # precision here doesn't matter.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "content-library-update"
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch catalog and update HTML
+        env:
+          RAVEN360_CLIENT_ID: ${{ secrets.RAVEN360_CLIENT_ID }}
+          RAVEN360_CLIENT_SECRET: ${{ secrets.RAVEN360_CLIENT_SECRET }}
+          RAVEN360_XAPI_KEY: ${{ secrets.RAVEN360_XAPI_KEY }}
+        run: python update_library.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AWS_Content_Library.html
+          if git diff --cached --quiet; then
+            echo "Catalog unchanged — no commit needed."
+            exit 0
+          fi
+          # Count courses from the embedded JSON to include in the commit message
+          COURSE_COUNT=$(python -c "
+          import re, json
+          html = open('AWS_Content_Library.html', encoding='utf-8').read()
+          m = re.search(r'<script type=\"application/json\" id=\"course-data\">(.*?)</script>', html, re.DOTALL)
+          print(len(json.loads(m.group(1)))) if m else print('?')
+          ")
+          git commit -m "Auto-update Content Library to ${COURSE_COUNT} English courses"
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed successfully."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) — rebasing onto latest main..."
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; echo "Rebase conflicted; exiting."; exit 1; }
+            sleep $((attempt * 5))
+          done
+          echo "Giving up after 3 attempts."
+          exit 1
