@@ -114,18 +114,6 @@ body{
   line-height:1.7;
 }
 .hero-desc strong{color:#fff;}
-.hero-stats{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;align-items:center;}
-.stat-pill{
-  background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.35);
-  border-radius:999px;
-  padding:7px 16px;
-  font-family:'JetBrains Mono',monospace;
-  font-size:.72rem;
-  letter-spacing:.05em;
-  color:rgba(255,255,255,.85);
-}
-.stat-pill strong{color:#fff;font-size:.85rem;}
 
 /* ─── BADGE (official artwork) ──────────────────────────── */
 .hero-badge{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:12px;}
@@ -198,34 +186,6 @@ body{
 }
 .audience-card strong{display:block;color:var(--pink-mid);margin-bottom:4px;font-size:.9rem;}
 
-/* snapshot table */
-.snapshot{
-  background:#fff;
-  border:1px solid var(--grey-200);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  overflow:hidden;
-}
-.snapshot-row{
-  display:flex;
-  padding:14px 22px;
-  border-bottom:1px solid var(--grey-100);
-  font-size:.88rem;
-  gap:16px;
-}
-.snapshot-row:last-child{border-bottom:none;}
-.snapshot-row .label{
-  flex:0 0 240px;
-  font-family:'JetBrains Mono',monospace;
-  font-size:.68rem;
-  letter-spacing:.05em;
-  text-transform:uppercase;
-  color:var(--grey-400);
-  padding-top:2px;
-}
-.snapshot-row .value{flex:1;color:var(--grey-800);}
-.snapshot-row .value strong{color:var(--pink-mid);}
-
 /* course card + CTA */
 .course-card{
   background:#fff;
@@ -268,16 +228,6 @@ body{
 }
 .start-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
 
-/* voucher note */
-.voucher-note{
-  background:var(--pink-pale);
-  border:1px solid var(--pink-light);
-  border-radius:var(--radius-lg);
-  padding:20px 24px;
-  font-size:.87rem;
-}
-.voucher-note strong{color:var(--pink-mid);}
-
 /* ─── FOOTER ─────────────────────────────────────────────── */
 .page-footer{
   background:var(--pink-dark);
@@ -295,8 +245,6 @@ body{
   .hero-split-seam,.hero-split-pink{clip-path:none;}
   .hero-eyebrow{justify-content:center;}
   .hero h1{font-size:1.7rem;}
-  .snapshot-row{flex-direction:column;gap:4px;}
-  .snapshot-row .label{flex:none;}
   .course-card{flex-direction:column;align-items:stretch;text-align:center;}
   .start-btn{text-align:center;}
 }
@@ -318,11 +266,6 @@ body{
         AI initiatives alongside technical teams. <strong>No coding or AWS implementation
         experience required.</strong>
       </p>
-      <div class="hero-stats">
-        <span class="stat-pill">Beta price <strong>$50 USD</strong> &middot; 50% off $100 GA</span>
-        <span class="stat-pill">Exam delivery begins <strong>Sept 29, 2026</strong></span>
-        <span class="stat-pill">Early Adopter badge if passed by <strong>Feb 15, 2027</strong></span>
-      </div>
     </div>
     <div class="hero-badge">
       <div class="badge-panel">
@@ -356,36 +299,6 @@ body{
   </div>
 
   <div class="section">
-    <div class="section-heading">Certification snapshot</div>
-    <div class="snapshot">
-      <div class="snapshot-row">
-        <div class="label">Category</div>
-        <div class="value">Business: a brand-new category sitting alongside Foundational, Associate, Professional, and Specialty</div>
-      </div>
-      <div class="snapshot-row">
-        <div class="label">Beta registration</div>
-        <div class="value"><strong>Open now</strong></div>
-      </div>
-      <div class="snapshot-row">
-        <div class="label">Exam delivery starts</div>
-        <div class="value"><strong>September 29, 2026</strong></div>
-      </div>
-      <div class="snapshot-row">
-        <div class="label">Beta exam price</div>
-        <div class="value"><strong>$50 USD</strong> (50% off the $100 USD GA price)</div>
-      </div>
-      <div class="snapshot-row">
-        <div class="label">Early Adopter deadline</div>
-        <div class="value">Pass by <strong>February 15, 2027</strong> to earn the special Early Adopter badge</div>
-      </div>
-      <div class="snapshot-row">
-        <div class="label">Prerequisites</div>
-        <div class="value">None. No coding or AWS implementation experience required</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="section">
     <div class="section-heading">Start your exam prep</div>
     <div class="course-card">
       <div class="course-card-info">
@@ -397,17 +310,6 @@ body{
         <div class="course-desc">Self-paced module covering the foundational AI concepts and terminology tested on the AWS Certified AI Business Strategist exam.</div>
       </div>
       <a class="start-btn" href="https://cloud.contentraven.com/awspartners/Praesignis/DirectLaunch?cid=foT1dmFyxpE_&io=wOoCJPyzt2Q_" target="_blank" rel="noopener">Start Course &rarr;</a>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-heading">Certification voucher discount</div>
-    <div class="voucher-note">
-      As a Digital Training Partner, you have access to a <strong>50% discount on AWS
-      certification vouchers</strong> through the Pearson VUE Voucher Store, including this new
-      AI Business Strategist certification ($100 value, $50 with discount). Create a Pearson VUE
-      Voucher Store account and complete the ATP enablement form to get started, setup guides are
-      available from your AWS DTP Partner Manager.
     </div>
   </div>
 
