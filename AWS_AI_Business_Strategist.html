@@ -228,6 +228,17 @@ body{
 }
 .start-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
 
+.secondary-link-row{margin-top:12px;text-align:right;}
+.secondary-link{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.74rem;
+  letter-spacing:.02em;
+  color:var(--pink-mid);
+  text-decoration:none;
+  border-bottom:1px solid transparent;
+}
+.secondary-link:hover{border-bottom-color:var(--pink-mid);}
+
 /* ─── FOOTER ─────────────────────────────────────────────── */
 .page-footer{
   background:var(--pink-dark);
@@ -246,6 +257,7 @@ body{
   .hero-eyebrow{justify-content:center;}
   .hero h1{font-size:1.7rem;}
   .course-card{flex-direction:column;align-items:stretch;text-align:center;}
+  .secondary-link-row{text-align:center;}
   .start-btn{text-align:center;}
 }
 </style>
@@ -299,17 +311,22 @@ body{
   </div>
 
   <div class="section">
-    <div class="section-heading">Start your exam prep</div>
+    <div class="section-heading">Start the course</div>
+    <!-- TODO: replace this placeholder href with the live course URL once the full AI Business Strategist course is published -->
     <div class="course-card">
       <div class="course-card-info">
         <div class="course-badge-group">
           <span class="level-badge">Business</span>
-          <span class="duration-badge">60 min</span>
         </div>
-        <div class="course-title">Core AI Concepts and Terminology</div>
-        <div class="course-desc">Self-paced module covering the foundational AI concepts and terminology tested on the AWS Certified AI Business Strategist exam.</div>
+        <div class="course-title">AWS Certified AI Business Strategist</div>
+        <div class="course-desc">Full course content for the AWS Certified AI Business Strategist certification.</div>
       </div>
-      <a class="start-btn" href="https://cloud.contentraven.com/awspartners/Praesignis/DirectLaunch?cid=foT1dmFyxpE_&io=wOoCJPyzt2Q_" target="_blank" rel="noopener">Start Course &rarr;</a>
+      <a class="start-btn" href="#">Start Course &rarr;</a>
+    </div>
+    <div class="secondary-link-row">
+      <a class="secondary-link" href="https://cloud.contentraven.com/awspartners/Praesignis/DirectLaunch?cid=foT1dmFyxpE_&io=wOoCJPyzt2Q_" target="_blank" rel="noopener">
+        Exam prep only: Core AI Concepts and Terminology (60 min) &rarr;
+      </a>
     </div>
   </div>
 
