@@ -1,0 +1,64 @@
+name: Publish NextPath Africa dashboards
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"   # every 2 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "nextpath-publish"
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Generate dashboards
+        env:
+          RAVEN360_CLIENT_ID:              ${{ secrets.RAVEN360_CLIENT_ID }}
+          RAVEN360_CLIENT_SECRET:          ${{ secrets.RAVEN360_CLIENT_SECRET }}
+          RAVEN360_XAPI_KEY:               ${{ secrets.RAVEN360_XAPI_KEY }}
+          MOODLE_TOKEN:                    ${{ secrets.MOODLE_TOKEN }}
+          NEXTPATH_SELF_MOODLE_COURSE_ID:  "142"
+          NEXTPATH_COHORT_MOODLE_COURSE_ID: "143"
+        run: python generate_nextpath.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AWS_NextPath_Self_Dashboard.html AWS_NextPath_Cohort_Dashboard.html
+          if git diff --cached --quiet; then
+            echo "No change — skipping commit."
+            exit 0
+          fi
+          SELF_COUNT=$(python -c "
+          import re, pathlib
+          h = pathlib.Path('AWS_NextPath_Self_Dashboard.html').read_text(encoding='utf-8')
+          m = re.search(r'<b>(\d+)</b> enrolled', h)
+          print(m.group(1) if m else '?')
+          ")
+          git commit -m "Auto-update NextPath dashboards (${SELF_COUNT} self-paced enrolled)"
+
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            echo "Push rejected (attempt $attempt) — rebasing…"
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; exit 0; }
+            sleep $((attempt * 4))
+          done
