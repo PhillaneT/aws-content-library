@@ -46,6 +46,13 @@ MOODLE_TOKEN = os.environ["MOODLE_TOKEN"]
 SELF_COURSE_ID   = int(os.environ["NEXTPATH_SELF_MOODLE_COURSE_ID"])
 COHORT_COURSE_ID = int(os.environ["NEXTPATH_COHORT_MOODLE_COURSE_ID"])
 
+# Matches config.json's trust.completion_threshold_pct in the main server (not
+# loaded here since this script runs standalone in CI) -- a Raven360 100%
+# only counts as a genuine completion once the learner's own time on that
+# course reaches this fraction of its authored duration, so a two-minute
+# click-through doesn't read the same as a finished course.
+COMPLETION_THRESHOLD_PCT = 50
+
 RAVEN360_SOURCE_TZ = ZoneInfo("America/New_York")
 DISPLAY_TZ         = ZoneInfo("Africa/Johannesburg")
 
@@ -119,6 +126,45 @@ def fetch_all_progress(token):
     return results
 
 
+_CATALOG_SOURCES = [
+    ("/administration/catalog/learningobjects", "learningobject_id", {"learningobject_type": "Content"}),
+    ("/administration/catalog/channels", "channel_id", {}),
+    ("/administration/catalog/learningpaths", "learningpath_id", {}),
+]
+
+
+def parse_duration(s):
+    """Catalog 'duration' is authored HH:MM:SS. Returns minutes, or None for
+    missing/zero/malformed -- None means "unknown", never treated as zero."""
+    if not s:
+        return None
+    try:
+        h, m, sec = (int(p) for p in str(s).split(":"))
+    except (ValueError, TypeError):
+        return None
+    total = h * 60 + m + sec / 60
+    return total if total > 0 else None
+
+
+def get_catalog_durations(token):
+    """(id_field, course_id) -> duration minutes, across all 3 catalog endpoints."""
+    hdrs = {"Authorization": token, "x-api-key": RAVEN360_XAPI_KEY, "Accept": "application/json"}
+    durations = {}
+    for path, id_field, extra in _CATALOG_SOURCES:
+        try:
+            r = requests.post(f"{RAVEN360_BASE_URL}{path}", headers=hdrs,
+                               json={**extra, "from_date": "01-01-2015", "to_date": "12-31-2030"},
+                               timeout=120)
+            r.raise_for_status()
+            for item in r.json().get("data", []):
+                course_id = item.get(id_field)
+                if course_id is not None:
+                    durations[(id_field, course_id)] = parse_duration(item.get("duration"))
+        except Exception:
+            continue
+    return durations
+
+
 def get_enrolled_students(course_id):
     r = requests.post(
         f"{MOODLE_URL}/webservice/rest/server.php",
@@ -142,7 +188,7 @@ def get_enrolled_students(course_id):
 
 # ── Aggregation ───────────────────────────────────────────────────────────
 
-def build_student_stats(roster, all_records):
+def build_student_stats(roster, all_records, durations):
     """For each enrolled student, aggregate their Raven360 activity."""
     by_email = defaultdict(list)
     for rec in all_records:
@@ -157,7 +203,22 @@ def build_student_stats(roster, all_records):
         email = person["email"]
         records = by_email.get(email, [])
 
-        completed = [r for r in records if r.get("completion_percentage") == 100]
+        # A Raven360-reported 100% only counts as "completed" once the
+        # learner's own time on that course reaches COMPLETION_THRESHOLD_PCT
+        # of its authored duration, otherwise a two-minute click-through
+        # would display identically to a genuinely finished course. Duration-
+        # unknown courses can't be judged, so they pass by default.
+        completed = []
+        for r in records:
+            if r.get("completion_percentage") != 100:
+                continue
+            dur = durations.get((r.get("_id_field"), r.get(r.get("_id_field"))))
+            fa = _parse_dt(r.get("first_access_date"))
+            la = _parse_dt(r.get("last_access_date"))
+            spent = (la - fa).total_seconds() / 60 if fa and la and la > fa else 0
+            if dur is None or spent >= (COMPLETION_THRESHOLD_PCT / 100) * dur:
+                completed.append(r)
+
         accessed  = [r for r in records if r.get("first_access_date")]
 
         # Time spent: sum (last_access - first_access) per course, cap at 8h each
@@ -403,6 +464,10 @@ def main():
     all_records = fetch_all_progress(token)
     print(f"  {len(all_records)} records fetched.")
 
+    print("Fetching catalog durations…")
+    durations = get_catalog_durations(token)
+    print(f"  {len(durations)} durations resolved.")
+
     generated_at = datetime.now(tz=DISPLAY_TZ).replace(tzinfo=None).isoformat()
 
     for course_id, slug, label, subtitle in [
@@ -419,7 +484,7 @@ def main():
             roster = []
         print(f"  {len(roster)} students enrolled.")
 
-        students = build_student_stats(roster, all_records)
+        students = build_student_stats(roster, all_records, durations)
         html = render_dashboard(label, subtitle, students, generated_at)
 
         out = BASE_DIR / slug
