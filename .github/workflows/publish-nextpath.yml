@@ -35,7 +35,7 @@ jobs:
           RAVEN360_XAPI_KEY:               ${{ secrets.RAVEN360_XAPI_KEY }}
           MOODLE_TOKEN:                    ${{ secrets.MOODLE_TOKEN }}
           NEXTPATH_SELF_MOODLE_COURSE_ID:  "142"
-          NEXTPATH_COHORT_MOODLE_COURSE_ID: "143"
+          NEXTPATH_COHORT_MOODLE_COURSE_ID: "140"
         run: python generate_nextpath.py
 
       - name: Commit and push if changed

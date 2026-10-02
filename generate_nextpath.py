@@ -222,7 +222,7 @@ def build_student_stats(roster, all_records):
 
 # ── HTML renderer ─────────────────────────────────────────────────────────
 
-LOGO_PATH = BASE_DIR.parent / "image-removebg-preview.png"
+LOGO_PATH = BASE_DIR.parent / "clients" / "nextpath-africa" / "image-removebg-preview.png"
 
 
 def logo_b64():
