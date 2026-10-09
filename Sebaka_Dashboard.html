@@ -35,6 +35,9 @@
   tbody tr:hover { background:var(--card-2); }
   td.c { text-align:center; }
   td.num { font-variant-numeric:tabular-nums; }
+  td.rank { color:var(--muted); font-weight:700; width:44px; }
+  td.rank.top { color:#e0b341; }
+  tr.gold-line td { padding:0; height:3px; background:#e0b341; border-bottom:none; }
   .name { font-weight:700; color:#fff; }
   .email { font-size:0.72rem; color:var(--muted); }
   .sub  { font-size:0.68rem; color:var(--muted); }
@@ -57,7 +60,7 @@
   <img src="data:image/png;base64," alt="Sebaka" style="height:48px;width:auto;">
   <div class="header-right">
     <strong>Sebaka Course Progress</strong>
-    Updated 09 Oct 2026 14:51 SAST
+    Updated 09 Oct 2026 21:21 SAST
   </div>
 </div>
 
@@ -79,6 +82,7 @@
     <table id="tbl">
       <thead>
         <tr>
+          <th style="text-align:center">#</th>
           <th>Student</th>
           <th>Status</th>
           <th>Last Active</th>
@@ -90,15 +94,18 @@
       <tbody id="tbody">
         
     <tr>
+      <td class="c num rank top">1</td>
       <td><div class="name">Thabelo Muthuvhukuma</div>
           <div class="email">thabelo.muthuvhukuma@praesignis.com</div></td>
       <td class="c"><span class="badge green">Active</span></td>
       <td class="c">09 Oct 2026<div class="sub">0d ago</div></td>
       <td class="c num">180</td>
       <td class="c num">96</td>
-      <td class="c num">779h 22m</td>
+      <td class="c num">108h 23m</td>
     </tr>
+    <tr class="gold-line"><td colspan="7"></td></tr>
     <tr>
+      <td class="c num rank">2</td>
       <td><div class="name">Pertunia Tladi</div>
           <div class="email">datamateacademy@gmail.com</div></td>
       <td class="c"><span class="badge green">Active</span></td>
@@ -108,6 +115,7 @@
       <td class="c num">-</td>
     </tr>
     <tr>
+      <td class="c num rank">3</td>
       <td><div class="name">Phillane Troskie</div>
           <div class="email">phillane.troskie@praesignis.com</div></td>
       <td class="c"><span class="badge green">Active</span></td>
