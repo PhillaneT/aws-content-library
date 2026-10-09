@@ -221,14 +221,17 @@ def build_student_stats(roster, all_records, durations):
 
         accessed = [r for r in records if r.get("first_access_date")]
 
-        # Time spent: sum (last_access - first_access) per course, cap at 8h each
+        # Time spent: sum (last_access - first_access) per course, capped at
+        # that course's own authored duration (8h when duration is unknown),
+        # so a tab left open can't outrank genuine effort.
         time_spent_min = 0
         for rec in records:
             fa = _parse_dt(rec.get("first_access_date"))
             la = _parse_dt(rec.get("last_access_date"))
             if fa and la and la > fa:
                 raw = (la - fa).total_seconds() / 60
-                time_spent_min += min(raw, 480)
+                dur = durations.get((rec.get("_id_field"), rec.get(rec.get("_id_field"))))
+                time_spent_min += min(raw, dur if dur else 480)
 
         # Last active from Raven360
         last_dates = [_parse_dt(r.get("last_access_date")) for r in records]
@@ -270,8 +273,8 @@ def build_student_stats(roster, all_records, durations):
         })
 
     students.sort(key=lambda s: (
-        -(s["timeSpentMin"] or 0),
         -(s["completed"] or 0),
+        -(s["timeSpentMin"] or 0),
         (s["name"] or "").lower(),
     ))
     return students
