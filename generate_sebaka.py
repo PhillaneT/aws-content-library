@@ -270,9 +270,7 @@ def build_student_stats(roster, all_records, durations):
         })
 
     students.sort(key=lambda s: (
-        0 if s["status"] == "active" else
-        1 if s["status"] == "idle" else
-        2 if s["status"] == "dormant" else 3,
+        -(s["timeSpentMin"] or 0),
         -(s["completed"] or 0),
         (s["name"] or "").lower(),
     ))
@@ -316,7 +314,11 @@ def render_dashboard(title, subtitle, students, generated_at):
     total         = len(students)
 
     rows = []
-    for s in students:
+    top_n = 3
+    top_count = min(top_n, sum(1 for s in students if s["timeSpentMin"]))
+    for i, s in enumerate(students):
+        if i == top_count and 0 < top_count < len(students):
+            rows.append('\n    <tr class="gold-line"><td colspan="7"></td></tr>')
         status_label = {
             "active":      '<span class="badge green">Active</span>',
             "idle":        '<span class="badge amber">Idle</span>',
@@ -326,8 +328,10 @@ def render_dashboard(title, subtitle, students, generated_at):
 
         days_txt = (f'{s["daysAgo"]}d ago' if s["daysAgo"] is not None else "never")
 
+        rank_cls = "rank top" if i < top_count else "rank"
         rows.append(f"""
     <tr>
+      <td class="c num {rank_cls}">{i + 1}</td>
       <td><div class="name">{esc(s['name'])}</div>
           <div class="email">{esc(s['email'])}</div></td>
       <td class="c">{status_label}</td>
@@ -337,7 +341,7 @@ def render_dashboard(title, subtitle, students, generated_at):
       <td class="c num">{fmt_mins(s['timeSpentMin'])}</td>
     </tr>""")
 
-    rows_html = "".join(rows) or '<tr><td colspan="6" class="empty">No students enrolled yet.</td></tr>'
+    rows_html = "".join(rows) or '<tr><td colspan="7" class="empty">No students enrolled yet.</td></tr>'
     gen_str = datetime.fromisoformat(generated_at).strftime("%d %b %Y %H:%M SAST")
 
     return f"""<!doctype html>
@@ -377,6 +381,9 @@ def render_dashboard(title, subtitle, students, generated_at):
   tbody tr:hover {{ background:var(--card-2); }}
   td.c {{ text-align:center; }}
   td.num {{ font-variant-numeric:tabular-nums; }}
+  td.rank {{ color:var(--muted); font-weight:700; width:44px; }}
+  td.rank.top {{ color:#e0b341; }}
+  tr.gold-line td {{ padding:0; height:3px; background:#e0b341; border-bottom:none; }}
   .name {{ font-weight:700; color:#fff; }}
   .email {{ font-size:0.72rem; color:var(--muted); }}
   .sub  {{ font-size:0.68rem; color:var(--muted); }}
@@ -421,6 +428,7 @@ def render_dashboard(title, subtitle, students, generated_at):
     <table id="tbl">
       <thead>
         <tr>
+          <th style="text-align:center">#</th>
           <th>Student</th>
           <th>Status</th>
           <th>Last Active</th>
